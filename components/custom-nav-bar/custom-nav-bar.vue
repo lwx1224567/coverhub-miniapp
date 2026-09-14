@@ -6,7 +6,7 @@
         <view class="title">
           {{title}}
         </view>
-        <view class="search">
+        <view class="search" @click="goSearch">
           <uni-icons class="icon" type="search" size="18" color="#888"></uni-icons>
           <text class="text">搜索</text>
         </view>
@@ -25,7 +25,13 @@
     getTitleBarHeight,
     getLeftIconLeft
   } from '@/utils/system.js'
-  
+
+  const goSearch = () => {
+    uni.navigateTo({
+      url: '/pages/search/search'
+    })
+  }
+
   defineProps({
     title:{
       type:String,

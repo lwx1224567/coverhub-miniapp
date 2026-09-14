@@ -47,6 +47,19 @@ export function apiGetClassList(data = {}){
   return success(list.slice(start, start + pageSize))
 }
 
+export function apiSearchCovers(keyword = ''){
+  const normalizedKeyword = String(keyword).trim().toLocaleLowerCase()
+  if(!normalizedKeyword) return success([])
+
+  const results = coverList.filter(item => {
+    const searchableValues = [item.title, item.className, ...(item.tabs || [])]
+    return searchableValues.some(value =>
+      String(value).toLocaleLowerCase().includes(normalizedKeyword)
+    )
+  })
+  return success(results)
+}
+
 export function apiGetSetUpScore(data = {}){
   const target = coverList.find(item => item._id === data.wallId && item.classid === data.classid)
   return target ? success({ wallId: data.wallId, userScore: data.userScore }) : failure('封面不存在')

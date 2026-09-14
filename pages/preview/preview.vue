@@ -1,574 +1,486 @@
 <template>
-  <view class="preview" v-if="currentInfo">
-    <swiper circular :current="currentIndex" @change="swiperChange" >
-      <swiper-item v-for="(item,index) in classList" :key="item._id">
-        <image v-if="readImgs.includes(index)" @click="maskChange" :src="item.picurl" mode="aspectFill"></image>
-      </swiper-item>
-    </swiper>
-    <view class="mask" v-if="maskState">
-      <view class="goBack" :style="{top: getStatusBarHeight() + 'px'}" @click="goBack">
-        <uni-icons type="back" color="#fff" size="20"></uni-icons>
-      </view>
-      <view class="count">
-        {{currentIndex + 1}} / {{classList.length}}
-      </view>
-      <view class="time">
-        <uni-dateformat :date="new Date()" format="hh:mm"></uni-dateformat>
-      </view>
-      <view class="date">
-        <uni-dateformat :date="new Date()" format="MM月/dd日"></uni-dateformat>
-      </view>
-      <view class="footer" >
-        <view class="box" @click="clickInfo">
-          <uni-icons type="info" size="28"></uni-icons>
-          <view class="text">
-            信息
-          </view>
-        </view>
+	<view class="preview" v-if="currentInfo">
+		<view class="previewArea">
+			<swiper class="swiper" circular :current="currentIndex" @change="swiperChange">
+				<swiper-item v-for="(item, index) in classList" :key="item._id || item.id">
+					<image
+						v-if="readImgs.includes(index)"
+						class="coverImage"
+						:src="item.picurl"
+						mode="aspectFill"
+						@click="openImagePreview(index)"
+					/>
+				</swiper-item>
+			</swiper>
 
-        <view class="box" @click="clickScore">
-          <uni-icons type="star" size="28"></uni-icons>
-          <view class="text">
-            {{currentInfo.score}}分
-          </view>
-        </view>
+			<view class="topBar" :style="{ paddingTop: getStatusBarHeight() + 'px' }">
+				<view class="backButton" @click="goBack">
+					<uni-icons type="left" size="24" color="#ffffff"></uni-icons>
+				</view>
+				<view class="pageCount">{{ currentIndex + 1 }} / {{ classList.length }}</view>
+			</view>
+		</view>
 
-        <view class="box" @click="clickDownload">
-          <uni-icons type="download" size="23"></uni-icons>
-          <view class="text">
-            领取
-          </view>
-        </view>
-      </view>
-    </view>
-    <uni-popup ref="inforPopup" type="bottom">
-      <view class="infoPopup">
-        <view class="popHeader">
-          <view></view>
-          <view class="title">
-            封面信息
-          </view>
-          <view class="close" @click="clickInfoClose">
-            <uni-icons type="closeempty" size="18" color="#999"></uni-icons>
-          </view>
-        </view>
-        <scroll-view scroll-y>
-          <view class="content">
-            <view class="row">
-              <text class="label">
-                封面ID：
-              </text>
-              <view selectable class="value">{{currentInfo._id}}</view>
-            </view>
+		<view class="detailPanel">
+			<view class="heading">
+				<text class="title">{{ currentInfo.title || '未命名封面' }}</text>
+				<text class="category">{{ currentInfo.className || '未分类' }}</text>
+			</view>
 
-            <view class="row">
-              <text class="label">
-                分类：
-              </text>
-              <view selectable class="value class">{{currentInfo.className}}</view>
-            </view>
+			<view class="section">
+				<view class="sectionTitle">标签</view>
+				<view class="tags" v-if="currentInfo.tabs && currentInfo.tabs.length">
+					<text class="tag" v-for="tag in currentInfo.tabs" :key="tag">{{ tag }}</text>
+				</view>
+				<text class="emptyText" v-else>暂无标签</text>
+			</view>
 
-            <view class="row">
-              <text class="label">
-                发布者：
-              </text>
-              <view selectable class="value">{{currentInfo.nickname}}</view>
-            </view>
+			<view class="section">
+				<view class="sectionTitle">封面简介</view>
+				<text class="description">{{ currentInfo.description || '暂无简介' }}</text>
+			</view>
 
-            <view class="row">
-              <text class="label">
-                评分：
-              </text>
-              <view selectable class="value roteBox">
-                <uni-rate readonly touchable="false" :value="currentInfo.score" size="16" />
-                <view class="score">
-                  {{currentInfo.score}}分
-                </view>
-              </view>
-            </view>
+			<view class="stats">
+				<view class="statItem">
+					<text class="statValue">{{ currentInfo.claimCount ?? 0 }}</text>
+					<text class="statLabel">领取人数</text>
+				</view>
+				<view class="statItem">
+					<text class="statValue" :class="{ soldOut: isOutOfStock }">{{ currentInfo.stock ?? 0 }}</text>
+					<text class="statLabel">剩余库存</text>
+				</view>
+			</view>
 
-            <view class="row">
-              <text class="label">
-                摘要：
-              </text>
-              <view selectable class="value">{{currentInfo.description}}</view>
-            </view>
+			<view class="metaList">
+				<view class="metaRow">
+					<text class="metaLabel">封面 ID</text>
+					<text class="metaValue">{{ currentInfo._id || currentInfo.id || '暂无' }}</text>
+				</view>
+				<view class="metaRow">
+					<text class="metaLabel">创建时间</text>
+					<text class="metaValue">{{ formatDate(currentInfo.createTime) }}</text>
+				</view>
+			</view>
+		</view>
 
-            <view class="row">
-              <text class="label">
-                标签：
-              </text>
-              <view selectable class="value tabs">
-                <view class="tab" v-for="tab in currentInfo.tabs" :key="tab">
-                  {{tab}}
-                </view>
-              </view>
-              
-            </view>
-            <view class="safe-area-inset-bottom">
-              
-            </view>
-          </view>
-        </scroll-view>
-      </view>
-    </uni-popup>
-    <uni-popup ref="scorePopup" :is-mask-click="false">
-      <view class="scorePopup">
-        <view class="popHeader">
-          <view></view>
-          <view class="title">
-            {{isScore? '评分过了~':'封面评分'}}
-          </view>
-          <view class="close" @click="clickScoreClose">
-            <uni-icons type="closeempty" size="18" color="#999"></uni-icons>
-          </view>
-        </view>
+		<view class="actionBar">
+			<view class="actionInner">
+				<button class="favoriteButton" @click="clickFavorite">收藏</button>
+				<button
+					class="claimButton"
+					:class="{ disabled: isOutOfStock }"
+					:disabled="isOutOfStock"
+					@click="clickClaim"
+				>
+					{{ isOutOfStock ? '已领完' : '立即领取' }}
+				</button>
+			</view>
+		</view>
+	</view>
 
-        <view class="content">
-          <uni-rate v-model="userScore" allowHalf />
-          <text class="text">{{userScore}}分</text>
-        </view>
-
-        <view class="footer">
-          <button @click="submitScore" type="default" size="mini" plain :disabled="!userScore || isScore">确认评分</button>
-        </view>
-      </view>
-    </uni-popup>
-  </view>
+	<view class="loading" v-else>
+		<uni-load-more status="loading"></uni-load-more>
+	</view>
 </template>
 
 <script setup>
-  import {
-    ref
-  } from 'vue';
-  import {
-    getStatusBarHeight
-  } from '@/utils/system.js'
-  import {
-    apiGetSetUpScore,
-    apiWriteDownload,
-    apidetailWall
-  } from '@/api/apis.js'
-  import {
-    onLoad,onShareAppMessage,onShareTimeline
-  } from '@dcloudio/uni-app'
-  
-  //预览页面数组
-  const classList = ref([])
-  //当前索引值
-  const currentIndex = ref(0)
-  //当前Id
-  const currentId = ref(null)
-  //从缓存中获取图片
-  const storageClassList = uni.getStorageSync('storageClassList') || []
-  //保存看过的图片
-  const readImgs = ref([])
-  //保存当前封面信息
-  const currentInfo = ref(null)
-  //是否有评分
-  const isScore = ref(false)
-  //处理图片，变为大图
-  classList.value = storageClassList.map(item => {
-    return {
-      ...item,
-      picurl: item.smallPicurl.replace("_small.webp", ".jpg")
-    }
-  })
+import { computed, ref } from 'vue'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { apidetailWall } from '@/api/apis.js'
+import { getStatusBarHeight } from '@/utils/system.js'
 
-  //轮播图滑动当前索引值改变
-  const swiperChange = (e) => {
-    currentIndex.value = e.detail.current
-    currentInfo.value = classList.value[currentIndex.value]
-    readImgs.value.push(currentIndex.value,
-      currentIndex.value <= 0 ? classList.value.length - 1 : currentIndex.value - 1,
-      currentIndex.value === classList.value.length - 1 ? 0 : currentIndex.value + 1,
-    )
-  }
-  onLoad(async (e) => {
-    currentId.value = e.id
-    if(e.type == 'share'){
-     let res = await apidetailWall({id:currentId.value})
-     classList.value = res.data.map(item =>{
-       return {
-         ...item,
-         picurl: item.smallPicurl.replace("_small.webp", ".jpg")
-       }
-     })
-    }
-    currentIndex.value = classList.value.findIndex((item) =>
-      item._id === currentId.value
-    )
-    currentInfo.value = classList.value[currentIndex.value]
-    readImgs.value.push(currentIndex.value,
-      currentIndex.value < 0 ? classList.value.length - 1 : currentIndex.value - 1,
-      currentIndex.value === classList.value.length - 1 ? 0 : currentIndex.value + 1,
-    )
-  })
+const storageClassList = uni.getStorageSync('storageClassList') || []
+const classList = ref(storageClassList.map(normalizeCover))
+const currentIndex = ref(0)
+const currentId = ref(null)
+const currentInfo = ref(null)
+const readImgs = ref([])
 
-  //用户评分
-  const userScore = ref(0)
+const isOutOfStock = computed(() => Number(currentInfo.value?.stock || 0) <= 0)
 
-  //遮罩层状态
-  const maskState = ref(true)
-  //改变遮罩层状态
-  const maskChange = () => {
-    maskState.value = !maskState.value
-  }
+function normalizeCover(item = {}) {
+	return {
+		...item,
+		picurl: item.picurl || item.smallPicurl || ''
+	}
+}
 
-  const inforPopup = ref(null)
-  //点击信息按钮
-  const clickInfo = () => {
-    inforPopup.value.open()
-  }
+function getCoverId(item = {}) {
+	return String(item._id || item.id || '')
+}
 
-  //点击关闭信息弹窗
-  const clickInfoClose = () => {
-    inforPopup.value.close()
-  }
+function preloadAround(index) {
+	const total = classList.value.length
+	if (!total) return
 
-  // 评分弹窗状态
-  const scorePopup = ref(null)
-  //评分弹窗
-  const clickScore = () => {
-    if (currentInfo.value.userScore) {
-      isScore.value = true
-      userScore.value = currentInfo.value.userScore
-    }
-    scorePopup.value.open()
-  }
-  //关闭评分弹窗
-  const clickScoreClose = () => {
-    scorePopup.value.close()
-    userScore.value = 0;
-    isScore.value = false
-  }
+	const indexes = [index, (index - 1 + total) % total, (index + 1) % total]
+	readImgs.value = [...new Set([...readImgs.value, ...indexes])]
+}
 
-  //确认评分
-  const submitScore = async () => {
-    let {
-      classid,
-      id: wallId
-    } = currentInfo.value
-    let res = await apiGetSetUpScore({
-      classid,
-      wallId,
-      userScore: userScore.value
-    })
-    if (res.errCode === 0) {
-      uni.showToast({
-        title: '评分成功',
-        icon: 'none'
-      })
-      classList.value[currentIndex.value].userScore = userScore.value
-      uni.setStorageSync("storageClassList", classList.value)
-      clickScoreClose()
-    }
+function setCurrentCover(index) {
+	const cover = classList.value[index]
+	if (!cover) return
 
-  }
+	currentIndex.value = index
+	currentInfo.value = cover
+	currentId.value = getCoverId(cover)
+	preloadAround(index)
+}
 
-  //返回上一页
-  const goBack = () => {
-    uni.navigateBack({
-      success:()=>{
-        
-      },
-      fail:(err)=>{
-        uni.reLaunch({
-          url:'/pages/index/index'
-        })
-      }
-    })
-  }
+function swiperChange(event) {
+	setCurrentCover(event.detail.current)
+}
 
-  //点击下载按钮
-  const clickDownload = async () => {
-    // #ifdef H5
-    uni.showModal({
-      content: '长按保存红包封面',
-      showCancel: false
-    })
-    // #endif
+function openImagePreview(index) {
+	const urls = classList.value.map(item => item.picurl).filter(Boolean)
+	const current = classList.value[index]?.picurl
+	if (!current || !urls.length) return
 
-    // #ifndef H5
-    try {
-      uni.showLoading({
-        title: '领取中....',
-        mask: true
-      })
-      let {
-        classid,
-        _id: wallId
-      } = currentInfo.value
-      let res = await apiWriteDownload({
-        classid,
-        wallId,
-      })
-      if (res.errCode !== 0) throw res
-      uni.getImageInfo({
-        src: currentInfo.value.picurl,
-        success: (res) => {
-          uni.saveImageToPhotosAlbum({
-            filePath: res.path,
-            fail: err => {
-              if (err.errMsg == 'saveImageToPhotosAlbum:fail cancel') {
-                uni.showToast({
-                  title: '保存失败，请重新点击领取',
-                  icon: 'none'
-                })
-                return
-              }
+	uni.previewImage({ current, urls })
+}
 
-              uni.showModal({
-                title: '提示',
-                content: '需要授权保存相册',
-                success: res => {
-                  if (res.confirm) {
-                    uni.openSetting({
-                      success(setting) {
-                        if (setting.authSetting['scope.writePhotosAlbum']) {
-                          uni.showToast({
-                            title: '获取授权成功！',
-                            icon: 'none'
-                          })
-                        } else {
-                          uni.showToast({
-                            title: '获取授权失败！',
-                            icon: 'none'
-                          })
-                        }
-                      }
-                    })
-                  }
-                }
-              })
-            },
-            complete: () => {
-              uni.hideLoading()
-            }
-          })
-        }
-      })
-    } catch (err) {
-      uni.hideLoading()
-    }
-    // #endif
+async function loadCoverById(id) {
+	const response = await apidetailWall({ id })
+	const covers = Array.isArray(response.data) ? response.data : []
+	classList.value = covers.map(normalizeCover)
+}
 
+onLoad(async (options = {}) => {
+	const id = String(options.id || '')
+	if (!id) {
+		uni.showToast({ title: '缺少封面 ID', icon: 'none' })
+		return
+	}
 
-  }
-  
-  
-  //分享给好友
-  onShareAppMessage((e)=>{
-    return {
-      title:'CoverHub 红包封面',
-      path:'/pages/preview/preview?id=' + currentId.value + "&type=share"
-    }
-  })
-  //分享给朋友圈
-  onShareTimeline(()=>{
-    return {
-      title:'CoverHub 红包封面',
-      query:'id=' + currentId.value + "&type=share"
-    }
-  })
+	let index = classList.value.findIndex(item => getCoverId(item) === id)
+
+	if (options.type === 'share' || index < 0) {
+		try {
+			await loadCoverById(id)
+		} catch (error) {
+			uni.showToast({ title: '封面加载失败', icon: 'none' })
+			return
+		}
+		index = classList.value.findIndex(item => getCoverId(item) === id)
+	}
+
+	if (index < 0) {
+		uni.showToast({ title: '未找到该封面', icon: 'none' })
+		return
+	}
+
+	setCurrentCover(index)
+})
+
+function formatDate(value) {
+	if (!value) return '暂无'
+	const date = new Date(value)
+	if (Number.isNaN(date.getTime())) return String(value)
+
+	const pad = number => String(number).padStart(2, '0')
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function clickFavorite() {
+	uni.showToast({
+		title: '收藏功能将在下一阶段实现',
+		icon: 'none'
+	})
+}
+
+function clickClaim() {
+	if (isOutOfStock.value) {
+		uni.showToast({ title: '该封面已领完', icon: 'none' })
+		return
+	}
+
+	uni.showModal({
+		title: '确认领取',
+		content: '本阶段仅展示领取流程，不会生成领取记录。',
+		confirmText: '我知道了',
+		success: result => {
+			if (result.confirm) {
+				uni.showToast({ title: '领取功能将在后续阶段实现', icon: 'none' })
+			}
+		}
+	})
+}
+
+function goBack() {
+	uni.navigateBack({
+		fail: () => {
+			uni.reLaunch({ url: '/pages/index/index' })
+		}
+	})
+}
+
+function getShareTitle() {
+	return currentInfo.value?.title
+		? `CoverHub · ${currentInfo.value.title}`
+		: 'CoverHub 红包封面'
+}
+
+function getSharePath() {
+	return `/pages/preview/preview?id=${currentId.value || ''}&type=share`
+}
+
+onShareAppMessage(() => ({
+	title: getShareTitle(),
+	path: getSharePath()
+}))
+
+onShareTimeline(() => ({
+	title: getShareTitle(),
+	query: `id=${currentId.value || ''}&type=share`
+}))
 </script>
 
 <style lang="scss" scoped>
-  .preview {
-    width: 100%;
-    height: 100vh;
-    position: relative;
+.preview {
+	min-height: 100vh;
+	box-sizing: border-box;
+	padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
+	background: #f5f6f8;
+}
 
-    swiper {
-      width: 100%;
-      height: 100%;
+.previewArea {
+	position: relative;
+	height: 62vh;
+	min-height: 720rpx;
+	max-height: 1100rpx;
+	background: #171717;
+	.swiper,
+	.coverImage {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+}
 
-      image {
-        width: 100%;
-        height: 100%;
-      }
-    }
+.topBar {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	box-sizing: border-box;
+	padding-left: 28rpx;
+	padding-right: 28rpx;
+	padding-bottom: 20rpx;
+	background: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent);
+}
 
-    .mask {
-      &>view {
-        position: absolute;
-        left: 0;
-        margin: auto;
-        color: #fff;
-        right: 0;
-        width: fit-content;
-      }
+.backButton,
+.pageCount {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 72rpx;
+	background: rgba(0, 0, 0, 0.35);
+	backdrop-filter: blur(10px);
+}
 
-      .goBack {
-        width: 38px;
-        height: 38px;
-        background: rgba(0, 0, 0, 0.5);
-        left: 30rpx;
-        margin-left: 0;
-        border-radius: 100px;
-        top: 0;
-        backdrop-filter: blur(10rpx);
-        border: 1rpx solid rgba(255, 255, 255, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
+.backButton {
+	width: 72rpx;
+	border-radius: 50%;
+}
 
-      .count {
-        top: 10vh;
-        background: rgba(0, 0, 0, 0.3);
-        font-size: 28rpx;
-        border-radius: 40rpx;
-        padding: 8rpx 28rpx;
-        backdrop-filter: blur(10rpx);
-      }
+.pageCount {
+	box-sizing: border-box;
+	min-width: 112rpx;
+	padding: 0 24rpx;
+	border-radius: 36rpx;
+	color: #fff;
+	font-size: 26rpx;
+}
 
-      .time {
-        font-size: 140rpx;
-        top: calc(10vh + 80rpx);
-        font-weight: 100;
-        line-height: 1em;
-        text-shadow: 0 4rpx rgba(0, 0, 0, 0.3);
-      }
+.detailPanel {
+	position: relative;
+	z-index: 1;
+	box-sizing: border-box;
+	margin-top: -28rpx;
+	padding: 42rpx 32rpx 36rpx;
+	border-radius: 28rpx 28rpx 0 0;
+	background: #fff;
+}
 
-      .date {
-        font-size: 34rpx;
-        top: calc(10vh + 230rpx);
-        text-shadow: 0 2rpx rgba(0, 0, 0, 0.3);
-      }
+.heading {
+	display: flex;
+	align-items: flex-start;
+	gap: 20rpx;
+	.title {
+		flex: 1;
+		min-width: 0;
+		color: #202124;
+		font-size: 42rpx;
+		font-weight: 700;
+		line-height: 1.35;
+		word-break: break-all;
+	}
+	.category {
+		flex-shrink: 0;
+		max-width: 180rpx;
+		box-sizing: border-box;
+		padding: 10rpx 20rpx;
+		border-radius: 24rpx;
+		overflow: hidden;
+		color: #e35b67;
+		font-size: 24rpx;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		background: #fff0f2;
+	}
+}
 
-      .footer {
-        background: rgba(255, 255, 255, 0.8);
-        bottom: 10vh;
-        width: 65vw;
-        height: 120rpx;
-        border-radius: 120rpx;
-        color: #000;
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        box-shadow: 0 2rpx 0 rgba(0, 0, 0, 0.1);
-        backdrop-filter: blur(20rpx);
+.section {
+	margin-top: 36rpx;
+	.sectionTitle {
+		margin-bottom: 18rpx;
+		color: #303133;
+		font-size: 30rpx;
+		font-weight: 600;
+	}
+}
 
-        .box {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 2rpx 12rpx;
+.tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14rpx;
+	.tag {
+		padding: 10rpx 20rpx;
+		border-radius: 8rpx;
+		color: #666;
+		font-size: 24rpx;
+		background: #f3f4f6;
+	}
+}
 
-          .text {
-            font-size: 26rpx;
-            color: $text-font-color-2;
-          }
-        }
-      }
-    }
+.description,
+.emptyText {
+	color: #606266;
+	font-size: 28rpx;
+	line-height: 1.75;
+	word-break: break-all;
+}
 
-    .popHeader {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+.emptyText {
+	color: #a8abb2;
+}
 
-      .title {
-        color: $text-font-color-2;
-        font-size: 26rpx;
-      }
+.stats {
+	display: flex;
+	margin-top: 38rpx;
+	padding: 28rpx 0;
+	border-radius: 18rpx;
+	background: #f8f8fa;
+	.statItem {
+		position: relative;
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		& + .statItem::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 8rpx;
+			bottom: 8rpx;
+			width: 1px;
+			background: #e5e6eb;
+		}
+	}
+	.statValue {
+		color: #303133;
+		font-size: 36rpx;
+		font-weight: 700;
+		&.soldOut {
+			color: #c0c4cc;
+		}
+	}
+	.statLabel {
+		margin-top: 8rpx;
+		color: #909399;
+		font-size: 24rpx;
+	}
+}
 
-      .close {
-        padding: 6rpx;
-      }
-    }
+.metaList {
+	margin-top: 26rpx;
+	.metaRow {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 30rpx;
+		padding: 18rpx 0;
+		border-bottom: 1px solid #f0f1f2;
+	}
+	.metaLabel {
+		flex-shrink: 0;
+		color: #909399;
+		font-size: 26rpx;
+	}
+	.metaValue {
+		color: #4e5969;
+		font-size: 26rpx;
+		text-align: right;
+		word-break: break-all;
+	}
+}
 
-    .infoPopup {
-      background: #fff;
-      padding: 30rpx;
-      border-radius: 30rpx 30rpx 0 0;
-      overflow: hidden;
+.actionBar {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 10;
+	padding-bottom: env(safe-area-inset-bottom);
+	border-top: 1px solid rgba(0, 0, 0, 0.06);
+	background: rgba(255, 255, 255, 0.96);
+	.actionInner {
+		display: flex;
+		gap: 20rpx;
+		box-sizing: border-box;
+		height: 132rpx;
+		padding: 20rpx 28rpx;
+	}
+	button {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 92rpx;
+		margin: 0;
+		border-radius: 46rpx;
+		font-size: 30rpx;
+		font-weight: 600;
+		line-height: 1;
+		&::after {
+			border: 0;
+		}
+	}
+	.favoriteButton {
+		border: 1px solid #f06a75;
+		color: #e95865;
+		background: #fff;
+	}
+	.claimButton {
+		color: #fff;
+		background: linear-gradient(135deg, #f27a82, #df4d5b);
+		&.disabled {
+			color: #fff;
+			background: #c8c9cc;
+		}
+	}
+}
 
-      scroll-view {
-        max-height: 50vh;
-
-        .content {
-          .row {
-            display: flex;
-            padding: 16rpx 0;
-            font-size: 32rpx;
-            line-height: 1.7em;
-
-            .label {
-              color: $text-font-color-3;
-              width: 140rpx;
-              text-align: right;
-              font-size: 30rpx;
-            }
-
-            .value {
-              flex: 1;
-              width: 0;
-            }
-
-            .roteBox {
-              display: flex;
-              align-items: center;
-
-              .score {
-                font-size: 26rpx;
-                color: $text-font-color-2;
-                padding-left: 10rpx;
-              }
-            }
-
-            .tabs {
-              display: flex;
-              flex-wrap: wrap;
-
-              .tab {
-                border: 1px solid $brand-theme-color;
-                color: $brand-theme-color;
-                font-size: 22rpx;
-                padding: 10rpx 30rpx;
-                border-radius: 40rpx;
-                line-height: 1em;
-                margin: 0 10rpx 10rpx 0;
-              }
-            }
-
-            .class {
-              color: $brand-theme-color;
-            }
-          }
-        }
-      }
-    }
-
-    .scorePopup {
-      background: #fff;
-      padding: 30rpx;
-      width: 70vw;
-      border-radius: 30rpx;
-
-      .content {
-        padding: 30rpx 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-
-        .text {
-          color: #ffca3e;
-          padding-left: 10rpx;
-          width: 80rpx;
-          line-height: 1em;
-          text-align: center;
-        }
-      }
-
-      .footer {
-        padding: 10rpx 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-    }
-  }
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	background: #f5f6f8;
+}
 </style>

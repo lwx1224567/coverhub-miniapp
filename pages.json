@@ -35,11 +35,19 @@
 		},
 		{
 		  "path" : "pages/preview/preview",
-		  "style" : 
+		  "style" :
 		  {
 		    "navigationBarTitleText" : "封面详情",
 		    "enablePullDownRefresh" : false,
         "navigationStyle": "custom"
+		  }
+		},
+		{
+		  "path" : "pages/search/search",
+		  "style" :
+		  {
+		    "navigationBarTitleText" : "搜索封面",
+		    "enablePullDownRefresh" : false
 		  }
 		},
 		{
