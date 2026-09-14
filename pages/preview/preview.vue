@@ -65,7 +65,18 @@
 
 		<view class="actionBar">
 			<view class="actionInner">
-				<button class="favoriteButton" @click="clickFavorite">收藏</button>
+				<button
+					class="favoriteButton"
+					:class="{ active: favoriteState }"
+					@click="clickFavorite"
+				>
+					<uni-icons
+						:type="favoriteState ? 'star-filled' : 'star'"
+						size="22"
+						:color="favoriteState ? '#ffffff' : '#e95865'"
+					></uni-icons>
+					<text>{{ favoriteState ? '已收藏' : '收藏' }}</text>
+				</button>
 				<button
 					class="claimButton"
 					:class="{ disabled: isOutOfStock }"
@@ -88,6 +99,7 @@ import { computed, ref } from 'vue'
 import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { apidetailWall } from '@/api/apis.js'
 import { getStatusBarHeight } from '@/utils/system.js'
+import { isFavorite, toggleFavorite } from '@/utils/favorite.js'
 
 const storageClassList = uni.getStorageSync('storageClassList') || []
 const classList = ref(storageClassList.map(normalizeCover))
@@ -95,6 +107,7 @@ const currentIndex = ref(0)
 const currentId = ref(null)
 const currentInfo = ref(null)
 const readImgs = ref([])
+const favoriteState = ref(false)
 
 const isOutOfStock = computed(() => Number(currentInfo.value?.stock || 0) <= 0)
 
@@ -124,6 +137,7 @@ function setCurrentCover(index) {
 	currentIndex.value = index
 	currentInfo.value = cover
 	currentId.value = getCoverId(cover)
+	favoriteState.value = isFavorite(currentId.value)
 	preloadAround(index)
 }
 
@@ -182,10 +196,21 @@ function formatDate(value) {
 }
 
 function clickFavorite() {
-	uni.showToast({
-		title: '收藏功能将在下一阶段实现',
-		icon: 'none'
-	})
+	if (!currentId.value) return
+
+	try {
+		favoriteState.value = toggleFavorite(currentId.value)
+		uni.showToast({
+			title: favoriteState.value ? '收藏成功' : '已取消收藏',
+			icon: 'none'
+		})
+	} catch (error) {
+		favoriteState.value = isFavorite(currentId.value)
+		uni.showToast({
+			title: '收藏操作失败，请重试',
+			icon: 'none'
+		})
+	}
 }
 
 function clickClaim() {
@@ -462,9 +487,14 @@ onShareTimeline(() => ({
 		}
 	}
 	.favoriteButton {
+		gap: 10rpx;
 		border: 1px solid #f06a75;
 		color: #e95865;
 		background: #fff;
+		&.active {
+			color: #fff;
+			background: #e95865;
+		}
 	}
 	.claimButton {
 		color: #fff;
