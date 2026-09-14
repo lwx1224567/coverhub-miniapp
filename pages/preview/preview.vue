@@ -108,8 +108,13 @@
 		</view>
 	</view>
 
-	<view class="loading" v-else>
+	<view class="loading" v-else-if="isPageLoading">
 		<uni-load-more status="loading"></uni-load-more>
+	</view>
+	<view class="errorState" v-else>
+		<uni-icons type="info" size="48" color="#c0c4cc"></uni-icons>
+		<text>{{ loadError || '封面信息加载失败' }}</text>
+		<button @tap="goBack">返回上一页</button>
 	</view>
 </template>
 
@@ -121,14 +126,26 @@ import { getStatusBarHeight } from '@/utils/system.js'
 import { isFavorite, toggleFavorite } from '@/utils/favorite.js'
 import { addClaimRecord, isClaimed } from '@/utils/claim.js'
 
-const storageClassList = uni.getStorageSync('storageClassList') || []
+function getStorageClassList() {
+	try {
+		const storedList = uni.getStorageSync('storageClassList')
+		return Array.isArray(storedList) ? storedList : []
+	} catch (error) {
+		return []
+	}
+}
+
+const storageClassList = getStorageClassList()
 const classList = ref(storageClassList.map(normalizeCover))
 const currentIndex = ref(0)
 const currentId = ref(null)
 const currentInfo = ref(null)
+const isPageLoading = ref(true)
+const loadError = ref('')
 const readImgs = ref([])
 const favoriteState = ref(false)
 const claimedState = ref(false)
+const isClaimConfirming = ref(false)
 const isGenerating = ref(false)
 const isSavingPoster = ref(false)
 const posterPath = ref('')
@@ -204,6 +221,8 @@ async function loadCoverById(id) {
 onLoad(async (options = {}) => {
 	const id = String(options.id || '')
 	if (!id) {
+		loadError.value = '缺少封面 ID'
+		isPageLoading.value = false
 		uni.showToast({ title: '缺少封面 ID', icon: 'none' })
 		return
 	}
@@ -214,6 +233,8 @@ onLoad(async (options = {}) => {
 		try {
 			await loadCoverById(id)
 		} catch (error) {
+			loadError.value = '封面加载失败'
+			isPageLoading.value = false
 			uni.showToast({ title: '封面加载失败', icon: 'none' })
 			return
 		}
@@ -221,11 +242,14 @@ onLoad(async (options = {}) => {
 	}
 
 	if (index < 0) {
+		loadError.value = '未找到该封面'
+		isPageLoading.value = false
 		uni.showToast({ title: '未找到该封面', icon: 'none' })
 		return
 	}
 
 	setCurrentCover(index)
+	isPageLoading.value = false
 })
 
 function formatDate(value) {
@@ -256,7 +280,7 @@ function clickFavorite() {
 }
 
 function handleClaim() {
-	if (!currentInfo.value || !currentId.value) return
+	if (isClaimConfirming.value || !currentInfo.value || !currentId.value) return
 
 	if (isOutOfStock.value) {
 		uni.showToast({ title: '该封面暂无库存', icon: 'none' })
@@ -268,6 +292,7 @@ function handleClaim() {
 		return
 	}
 
+	isClaimConfirming.value = true
 	uni.showModal({
 		title: '确认领取',
 		content: `确认领取“${currentInfo.value?.title || '当前'}”红包封面吗？`,
@@ -285,6 +310,12 @@ function handleClaim() {
 				claimedState.value = isClaimed(currentId.value)
 				uni.showToast({ title: '领取失败，请重试', icon: 'none' })
 			}
+		},
+		fail: () => {
+			uni.showToast({ title: '领取确认失败，请重试', icon: 'none' })
+		},
+		complete: () => {
+			isClaimConfirming.value = false
 		}
 	})
 }
@@ -325,10 +356,7 @@ function getImageInfo(src) {
 			uni.getImageInfo({
 				src: normalizedSrc,
 				success: result => finish(resolve, result),
-				fail: error => {
-					console.error('[poster] getImageInfo failed:', normalizedSrc, error)
-					finish(reject, error)
-				}
+				fail: error => finish(reject, error)
 			})
 		} catch (error) {
 			finish(reject, error)
@@ -549,16 +577,12 @@ async function generatePoster() {
 	try {
 		const rawImagePath = cover.picurl
 		const normalizedImagePath = normalizeLocalImagePath(rawImagePath)
-		console.log('[poster] raw image:', rawImagePath)
-		console.log('[poster] normalized image:', normalizedImagePath)
 		if (!normalizedImagePath) throw new Error('封面图片路径无效')
 
 		const imageInfo = await getImageInfo(normalizedImagePath)
-		console.log('[poster] imageInfo.path:', imageInfo.path)
 		const drawableImagePath = normalizedImagePath.startsWith('/static/')
 			? normalizedImagePath
 			: normalizeLocalImagePath(imageInfo.path || normalizedImagePath)
-		console.log('[poster] drawable image:', drawableImagePath)
 		if (!drawableImagePath) throw new Error('封面图片不可绘制')
 		const context = uni.createCanvasContext(POSTER_CANVAS_ID)
 		if (!context) throw new Error('Canvas 创建失败')
@@ -623,19 +647,23 @@ async function savePoster() {
 	if (isSavingPoster.value || !posterPath.value) return
 	isSavingPoster.value = true
 	uni.showLoading({ title: '保存中', mask: true })
+	let saveResult = 'success'
 
 	try {
 		await saveImageToAlbum(posterPath.value)
-		uni.showToast({ title: '已保存到相册', icon: 'success' })
 	} catch (error) {
-		if (isAlbumPermissionError(error)) {
-			showAlbumPermissionGuide()
-		} else {
-			uni.showToast({ title: '保存失败，请重试', icon: 'none' })
-		}
+		saveResult = isAlbumPermissionError(error) ? 'permission' : 'error'
 	} finally {
-		isSavingPoster.value = false
 		uni.hideLoading()
+		isSavingPoster.value = false
+	}
+
+	if (saveResult === 'success') {
+		uni.showToast({ title: '已保存到相册', icon: 'success' })
+	} else if (saveResult === 'permission') {
+		showAlbumPermissionGuide()
+	} else {
+		uni.showToast({ title: '保存失败，请重试', icon: 'none' })
 	}
 }
 
@@ -1008,5 +1036,31 @@ onShareTimeline(() => ({
 	justify-content: center;
 	min-height: 100vh;
 	background: #f5f6f8;
+}
+
+.errorState {
+	display: flex;
+	min-height: 100vh;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	gap: 24rpx;
+	color: #909399;
+	background: #f5f6f8;
+
+	button {
+		height: 72rpx;
+		margin: 8rpx 0 0;
+		padding: 0 36rpx;
+		border-radius: 36rpx;
+		color: #fff;
+		font-size: 27rpx;
+		line-height: 72rpx;
+		background: $brand-theme-color;
+
+		&::after {
+			border: 0;
+		}
+	}
 }
 </style>

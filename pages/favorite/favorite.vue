@@ -50,7 +50,8 @@ function createCoverViewModel(item = {}) {
     imageUrl: item.smallPicurl || item.picurl || '',
     title: item.title || '未命名封面',
     className: item.className || '未分类',
-    firstTag: Array.isArray(item.tabs) && item.tabs.length ? item.tabs[0] : ''
+    firstTag: Array.isArray(item.tabs) && item.tabs.length ? item.tabs[0] : '',
+    cover: item
   }
 }
 
@@ -80,7 +81,7 @@ function cancelFavorite(id) {
 }
 
 function goPreview(id) {
-  uni.setStorageSync('storageClassList', coverList.value)
+  uni.setStorageSync('storageClassList', coverList.value.map(item => item.cover))
   uni.navigateTo({ url: `/pages/preview/preview?id=${id}` })
 }
 

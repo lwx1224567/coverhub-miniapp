@@ -58,7 +58,7 @@
           热门主题
         </template>
         <template #custom>
-          <navigator url="" class="more">More+</navigator>
+          <navigator url="/pages/classify/classify" open-type="switchTab" class="more">More+</navigator>
         </template>
       </common-title>
 

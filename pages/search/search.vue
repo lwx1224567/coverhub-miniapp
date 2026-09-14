@@ -95,8 +95,33 @@
   const isSearching = ref(false)
   const hasSearched = ref(false)
   const searchResults = ref([])
-  const storedHistory = uni.getStorageSync(SEARCH_HISTORY_KEY)
-  const searchHistory = ref(Array.isArray(storedHistory) ? storedHistory.slice(0, MAX_HISTORY_SIZE) : [])
+
+  const normalizeHistory = (value) => {
+    if(!Array.isArray(value)) return []
+
+    const normalizedKeywords = []
+    const keywordKeys = new Set()
+    value.forEach(item => {
+      if(typeof item !== 'string') return
+      const normalizedItem = item.trim()
+      const keywordKey = normalizedItem.toLocaleLowerCase()
+      if(!normalizedItem || keywordKeys.has(keywordKey)) return
+
+      normalizedKeywords.push(normalizedItem)
+      keywordKeys.add(keywordKey)
+    })
+    return normalizedKeywords.slice(0, MAX_HISTORY_SIZE)
+  }
+
+  const getStoredHistory = () => {
+    try {
+      return normalizeHistory(uni.getStorageSync(SEARCH_HISTORY_KEY))
+    } catch (error) {
+      return []
+    }
+  }
+
+  const searchHistory = ref(getStoredHistory())
 
   const saveHistory = (value) => {
     const normalizedValue = value.toLocaleLowerCase()
@@ -105,7 +130,9 @@
       ...searchHistory.value.filter(item => item.toLocaleLowerCase() !== normalizedValue)
     ].slice(0, MAX_HISTORY_SIZE)
     searchHistory.value = nextHistory
-    uni.setStorageSync(SEARCH_HISTORY_KEY, nextHistory)
+    try {
+      uni.setStorageSync(SEARCH_HISTORY_KEY, nextHistory)
+    } catch (error) {}
   }
 
   const submitSearch = async () => {
@@ -119,7 +146,7 @@
     hasSearched.value = true
     try {
       const res = await apiSearchCovers(trimmedKeyword)
-      searchResults.value = res.data
+      searchResults.value = res && Array.isArray(res.data) ? res.data : []
       saveHistory(trimmedKeyword)
     } catch (err) {
       searchResults.value = []

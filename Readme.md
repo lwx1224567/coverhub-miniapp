@@ -1,26 +1,33 @@
-### 项目介绍
+# CoverHub
 
-CoverHub 是基于 uni-app + Vue3 搭建的微信红包封面精选小程序。当前阶段保留首页、分类页和个人中心页等原有页面结构，并提供**封面浏览、封面预览、封面领取、分享好友、联系客服**等基础能力。开发数据与图片均来自项目内的本地 Mock 数据源。
+CoverHub 是一个基于 uni-app 与 Vue 3 开发的微信红包封面精选小程序 MVP。项目使用本地 Mock 数据与本地图片，可在不依赖远程接口的情况下演示完整业务闭环。
 
-### 项目技术栈
+## 已实现功能
 
-**1.Vue3**
+- 首页精选、分类浏览与分页列表
+- 按标题、标签、分类搜索及搜索历史
+- 封面详情、Swiper 切换与分享
+- 本地收藏与领取记录
+- 我的收藏与我的领取
+- Canvas 分享海报、预览与保存相册
 
-**2.Uniapp**
+## 技术栈
 
-**3.Ajax**
+- uni-app
+- Vue 3 Composition API
+- 微信小程序
+- uni-ui
+- 本地 Storage
+- 本地 Mock 数据
 
-**4.unicloud**
+## 数据说明
 
-### 项目预览
+业务数据位于 `mock/data.js`，封面图片位于 `static/covers/`。当前版本不连接远程 API、uniCloud 或真实微信红包封面领取接口；收藏和领取记录仅保存在当前设备的小程序 Storage 中。
 
-![个人中心](/common/images/image.png)
-![首页](/common/images/[V80_XXVFUD$VZOPQ6$2[YX.png)
------
+## 本地运行
 
-![分类页](/common/images/VLBB84D@6T3R9M@AS_@3HJ4.png)
-![详情页](/common/images/EL`$[733[[RW2I5GEDAMAEM.png)
------
+1. 使用 HBuilderX 打开项目。
+2. 选择“运行到小程序模拟器 → 微信开发者工具”。
+3. 在微信开发者工具中编译并按业务流程进行验证。
 
-![预览](<common/images/MCR[IKEUYH])UDW_HB}LYC0.png>)
-![预览页](<common/images/WU)D3}A3FWN`N@9PNIMB733.png>)
+编译产物位于 `unpackage/`，该目录已由 `.gitignore` 忽略。

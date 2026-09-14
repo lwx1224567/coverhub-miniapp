@@ -9,7 +9,7 @@
         {{compareTimestamp(item.updateTime)}}前更新
       </view>
     </navigator>
-    <navigator url="/pages/classify/classify" open-type="reLaunch" class="box more" v-else>
+    <navigator url="/pages/classify/classify" open-type="switchTab" class="box more" v-else>
       <image src="../../common/images/more.jpg" mode="aspectFill" class="pic"></image>
       <view class="mask">
         <uni-icons type="more-filled" size="34" color="#fff"></uni-icons>
