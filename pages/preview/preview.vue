@@ -77,6 +77,10 @@
 					></uni-icons>
 					<text>{{ favoriteState ? '已收藏' : '收藏' }}</text>
 				</button>
+				<button class="posterButton" @tap="generatePoster">
+					<uni-icons type="image" size="21" color="#28b389"></uni-icons>
+					<text>{{ posterButtonText }}</text>
+				</button>
 				<button
 					class="claimButton"
 					:class="{ disabled: isOutOfStock, claimed: claimedState }"
@@ -84,6 +88,22 @@
 				>
 					{{ claimButtonText }}
 				</button>
+			</view>
+		</view>
+
+		<canvas canvas-id="posterCanvas" id="posterCanvas" class="posterCanvas"></canvas>
+
+		<view v-if="posterVisible" class="posterMask" @tap="closePoster">
+			<view class="posterDialog" @tap.stop>
+				<view class="posterHeader">
+					<text>分享海报</text>
+					<uni-icons type="closeempty" size="22" color="#666666" @tap="closePoster"></uni-icons>
+				</view>
+				<image class="posterImage" :src="posterPath" mode="aspectFit"></image>
+				<view class="posterActions">
+					<button class="previewButton" @tap="previewPoster">全屏预览</button>
+					<button class="saveButton" @tap="savePoster">保存到相册</button>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -109,12 +129,23 @@ const currentInfo = ref(null)
 const readImgs = ref([])
 const favoriteState = ref(false)
 const claimedState = ref(false)
+const isGenerating = ref(false)
+const isSavingPoster = ref(false)
+const posterPath = ref('')
+const posterCoverId = ref('')
+const posterVisible = ref(false)
+
+const POSTER_WIDTH = 750
+const POSTER_HEIGHT = 1200
+const POSTER_CANVAS_ID = 'posterCanvas'
+const POSTER_ASYNC_TIMEOUT = 10000
 
 const isOutOfStock = computed(() => Number(currentInfo.value?.stock || 0) <= 0)
 const claimButtonText = computed(() => {
 	if (isOutOfStock.value) return '已领完'
 	return claimedState.value ? '已领取' : '立即领取'
 })
+const posterButtonText = computed(() => isGenerating.value ? '生成中' : '生成海报')
 
 function normalizeCover(item = {}) {
 	return {
@@ -144,6 +175,11 @@ function setCurrentCover(index) {
 	currentId.value = getCoverId(cover)
 	favoriteState.value = isFavorite(currentId.value)
 	claimedState.value = isClaimed(currentId.value)
+	if (posterCoverId.value && posterCoverId.value !== currentId.value) {
+		posterPath.value = ''
+		posterCoverId.value = ''
+		posterVisible.value = false
+	}
 	preloadAround(index)
 }
 
@@ -251,6 +287,356 @@ function handleClaim() {
 			}
 		}
 	})
+}
+
+function normalizeLocalImagePath(path = '') {
+	const imagePath = String(path || '').trim()
+	if (!imagePath) return ''
+
+	const lowerPath = imagePath.toLowerCase()
+	if (
+		lowerPath.startsWith('http://') ||
+		lowerPath.startsWith('https://') ||
+		lowerPath.startsWith('wxfile://') ||
+		lowerPath.startsWith('file://') ||
+		lowerPath.startsWith('blob:')
+	) {
+		return imagePath
+	}
+
+	return imagePath.startsWith('/') ? imagePath : `/${imagePath}`
+}
+
+function getImageInfo(src) {
+	return new Promise((resolve, reject) => {
+		const normalizedSrc = normalizeLocalImagePath(src)
+		let settled = false
+		const finish = (handler, value) => {
+			if (settled) return
+			settled = true
+			clearTimeout(timeoutId)
+			handler(value)
+		}
+		const timeoutId = setTimeout(() => {
+			finish(reject, new Error('封面图片加载超时'))
+		}, POSTER_ASYNC_TIMEOUT)
+
+		try {
+			uni.getImageInfo({
+				src: normalizedSrc,
+				success: result => finish(resolve, result),
+				fail: error => {
+					console.error('[poster] getImageInfo failed:', normalizedSrc, error)
+					finish(reject, error)
+				}
+			})
+		} catch (error) {
+			finish(reject, error)
+		}
+	})
+}
+
+function drawImageCover(context, imagePath, imageInfo, x, y, width, height) {
+	const sourceWidth = Number(imageInfo.width)
+	const sourceHeight = Number(imageInfo.height)
+	if (!sourceWidth || !sourceHeight) throw new Error('封面图片尺寸无效')
+
+	const sourceRatio = sourceWidth / sourceHeight
+	const targetRatio = width / height
+	let sourceX = 0
+	let sourceY = 0
+	let cropWidth = sourceWidth
+	let cropHeight = sourceHeight
+
+	if (sourceRatio > targetRatio) {
+		cropWidth = sourceHeight * targetRatio
+		sourceX = (sourceWidth - cropWidth) / 2
+	} else {
+		cropHeight = sourceWidth / targetRatio
+		sourceY = (sourceHeight - cropHeight) / 2
+	}
+
+	context.drawImage(
+		imagePath,
+		sourceX,
+		sourceY,
+		cropWidth,
+		cropHeight,
+		x,
+		y,
+		width,
+		height
+	)
+}
+
+function truncateText(context, text, maxWidth) {
+	const suffix = '...'
+	let output = String(text || '')
+	if (context.measureText(output).width <= maxWidth) return output
+
+	while (output && context.measureText(output + suffix).width > maxWidth) {
+		output = output.slice(0, -1)
+	}
+	return output + suffix
+}
+
+function drawWrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
+	const characters = Array.from(String(text || ''))
+	const lines = []
+	let line = ''
+
+	for (let index = 0; index < characters.length; index++) {
+		const nextLine = line + characters[index]
+		if (context.measureText(nextLine).width <= maxWidth) {
+			line = nextLine
+			continue
+		}
+
+		if (lines.length === maxLines - 1) {
+			lines.push(truncateText(context, line + characters.slice(index).join(''), maxWidth))
+			line = ''
+			break
+		}
+
+		lines.push(line)
+		line = characters[index]
+	}
+
+	if (line && lines.length < maxLines) lines.push(line)
+	lines.slice(0, maxLines).forEach((item, index) => {
+		context.fillText(item, x, y + index * lineHeight)
+	})
+	return lines.length
+}
+
+function fillRoundedRect(context, x, y, width, height, radius) {
+	const safeRadius = Math.min(radius, width / 2, height / 2)
+	context.beginPath()
+	context.moveTo(x + safeRadius, y)
+	context.lineTo(x + width - safeRadius, y)
+	context.quadraticCurveTo(x + width, y, x + width, y + safeRadius)
+	context.lineTo(x + width, y + height - safeRadius)
+	context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height)
+	context.lineTo(x + safeRadius, y + height)
+	context.quadraticCurveTo(x, y + height, x, y + height - safeRadius)
+	context.lineTo(x, y + safeRadius)
+	context.quadraticCurveTo(x, y, x + safeRadius, y)
+	context.closePath()
+	context.fill()
+}
+
+function drawPoster(context, imagePath, imageInfo, cover) {
+	context.setFillStyle('#fff8f3')
+	context.fillRect(0, 0, POSTER_WIDTH, POSTER_HEIGHT)
+
+	context.setFillStyle('#202124')
+	context.setFontSize(46)
+	context.fillText('CoverHub', 60, 72)
+	context.setFillStyle('#8a5b53')
+	context.setFontSize(25)
+	context.fillText('微信红包封面精选', 60, 116)
+
+	context.setFillStyle('#f0e4dc')
+	context.fillRect(68, 143, 614, 574)
+	context.save()
+	context.beginPath()
+	context.rect(75, 150, 600, 560)
+	context.clip()
+	drawImageCover(context, imagePath, imageInfo, 75, 150, 600, 560)
+	context.restore()
+
+	context.setFillStyle('#202124')
+	context.setFontSize(42)
+	const titleLineCount = drawWrappedText(context, cover.title || '未命名封面', 60, 772, 630, 50, 2)
+
+	const metaItems = []
+	const metaCandidates = [cover.className || '未分类', ...(Array.isArray(cover.tabs) ? cover.tabs : [])]
+	metaCandidates.forEach(item => {
+		const value = String(item || '').trim()
+		if (value && !metaItems.includes(value)) metaItems.push(value)
+	})
+	const coverMeta = metaItems.slice(0, 2).join(' · ')
+	const metaY = 828 + Math.max(0, titleLineCount - 1) * 50
+	context.setFillStyle('#8a5b53')
+	context.setFontSize(27)
+	context.fillText(truncateText(context, coverMeta, 630), 60, metaY)
+
+	const shareCardY = Math.max(900, metaY + 42)
+	context.setFillStyle('#ffffff')
+	fillRoundedRect(context, 60, shareCardY, 630, 164, 22)
+	context.setFillStyle('#df4d5b')
+	context.setFontSize(30)
+	context.fillText('精选红包封面，分享给好友看看', 92, shareCardY + 62)
+	context.setFillStyle('#7a7f87')
+	context.setFontSize(24)
+	context.fillText('微信搜索 CoverHub', 92, shareCardY + 116)
+
+	context.setFillStyle('#b58b82')
+	context.setFontSize(20)
+	context.fillText('CoverHub · 把心意分享给重要的人', 60, 1142)
+}
+
+function commitCanvas(context) {
+	return new Promise((resolve, reject) => {
+		let settled = false
+		const finish = (handler, value) => {
+			if (settled) return
+			settled = true
+			clearTimeout(timeoutId)
+			handler(value)
+		}
+		const timeoutId = setTimeout(() => {
+			finish(reject, new Error('Canvas 绘制超时'))
+		}, POSTER_ASYNC_TIMEOUT)
+
+		try {
+			context.draw(false, () => finish(resolve))
+		} catch (error) {
+			finish(reject, error)
+		}
+	})
+}
+
+function exportPoster() {
+	return new Promise((resolve, reject) => {
+		let settled = false
+		const finish = (handler, value) => {
+			if (settled) return
+			settled = true
+			clearTimeout(timeoutId)
+			handler(value)
+		}
+		const timeoutId = setTimeout(() => {
+			finish(reject, new Error('海报导出超时'))
+		}, POSTER_ASYNC_TIMEOUT)
+
+		try {
+			uni.canvasToTempFilePath({
+				canvasId: POSTER_CANVAS_ID,
+				x: 0,
+				y: 0,
+				width: POSTER_WIDTH,
+				height: POSTER_HEIGHT,
+				destWidth: POSTER_WIDTH,
+				destHeight: POSTER_HEIGHT,
+				fileType: 'jpg',
+				quality: 0.92,
+				success: result => finish(resolve, result.tempFilePath),
+				fail: error => finish(reject, error)
+			})
+		} catch (error) {
+			finish(reject, error)
+		}
+	})
+}
+
+async function generatePoster() {
+	if (isGenerating.value) return
+	if (!currentInfo.value || !currentId.value || !currentInfo.value.picurl) {
+		uni.showToast({ title: '当前封面不存在', icon: 'none' })
+		return
+	}
+
+	const cover = { ...currentInfo.value }
+	const coverId = currentId.value
+	posterVisible.value = false
+	posterPath.value = ''
+	posterCoverId.value = ''
+	isGenerating.value = true
+	uni.showLoading({ title: '生成中', mask: true })
+	let generateError = null
+
+	try {
+		const rawImagePath = cover.picurl
+		const normalizedImagePath = normalizeLocalImagePath(rawImagePath)
+		console.log('[poster] raw image:', rawImagePath)
+		console.log('[poster] normalized image:', normalizedImagePath)
+		if (!normalizedImagePath) throw new Error('封面图片路径无效')
+
+		const imageInfo = await getImageInfo(normalizedImagePath)
+		console.log('[poster] imageInfo.path:', imageInfo.path)
+		const drawableImagePath = normalizedImagePath.startsWith('/static/')
+			? normalizedImagePath
+			: normalizeLocalImagePath(imageInfo.path || normalizedImagePath)
+		console.log('[poster] drawable image:', drawableImagePath)
+		if (!drawableImagePath) throw new Error('封面图片不可绘制')
+		const context = uni.createCanvasContext(POSTER_CANVAS_ID)
+		if (!context) throw new Error('Canvas 创建失败')
+
+		drawPoster(context, drawableImagePath, imageInfo, cover)
+		await commitCanvas(context)
+		const tempFilePath = await exportPoster()
+		if (!tempFilePath) throw new Error('海报导出失败')
+
+		posterPath.value = tempFilePath
+		posterCoverId.value = coverId
+		posterVisible.value = true
+	} catch (error) {
+		generateError = error
+		console.error('[poster] generate failed:', error)
+	} finally {
+		uni.hideLoading()
+		isGenerating.value = false
+	}
+
+	if (generateError) {
+		uni.showToast({ title: '海报生成失败', icon: 'none' })
+	}
+}
+
+function closePoster() {
+	posterVisible.value = false
+}
+
+function previewPoster() {
+	if (!posterPath.value) return
+	uni.previewImage({ current: posterPath.value, urls: [posterPath.value] })
+}
+
+function saveImageToAlbum(filePath) {
+	return new Promise((resolve, reject) => {
+		uni.saveImageToPhotosAlbum({
+			filePath,
+			success: resolve,
+			fail: reject
+		})
+	})
+}
+
+function isAlbumPermissionError(error = {}) {
+	const message = String(error.errMsg || error.message || '').toLowerCase()
+	return message.includes('auth') || message.includes('authorize') || message.includes('permission') || message.includes('deny')
+}
+
+function showAlbumPermissionGuide() {
+	uni.showModal({
+		title: '需要相册权限',
+		content: '需要相册权限才能保存图片，请前往设置开启。',
+		confirmText: '去设置',
+		success: result => {
+			if (result.confirm) uni.openSetting()
+		}
+	})
+}
+
+async function savePoster() {
+	if (isSavingPoster.value || !posterPath.value) return
+	isSavingPoster.value = true
+	uni.showLoading({ title: '保存中', mask: true })
+
+	try {
+		await saveImageToAlbum(posterPath.value)
+		uni.showToast({ title: '已保存到相册', icon: 'success' })
+	} catch (error) {
+		if (isAlbumPermissionError(error)) {
+			showAlbumPermissionGuide()
+		} else {
+			uni.showToast({ title: '保存失败，请重试', icon: 'none' })
+		}
+	} finally {
+		isSavingPoster.value = false
+		uni.hideLoading()
+	}
 }
 
 function goBack() {
@@ -518,6 +904,12 @@ onShareTimeline(() => ({
 			background: #e95865;
 		}
 	}
+	.posterButton {
+		gap: 8rpx;
+		border: 1px solid rgba(40, 179, 137, 0.45);
+		color: $brand-theme-color;
+		background: rgba(40, 179, 137, 0.08);
+	}
 	.claimButton {
 		color: #fff;
 		background: linear-gradient(135deg, #f27a82, #df4d5b);
@@ -528,6 +920,84 @@ onShareTimeline(() => ({
 		&.disabled {
 			color: #fff;
 			background: #c8c9cc;
+		}
+	}
+}
+
+.posterCanvas {
+	position: fixed;
+	left: -10000px;
+	top: 0;
+	width: 750px;
+	height: 1200px;
+	pointer-events: none;
+}
+
+.posterMask {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 30;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40rpx 0;
+	background: rgba(0, 0, 0, 0.68);
+}
+
+.posterDialog {
+	box-sizing: border-box;
+	width: 650rpx;
+	padding: 28rpx;
+	border-radius: 24rpx;
+	background: #fff;
+
+	.posterHeader {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 22rpx;
+		color: $text-font-color-1;
+		font-size: 31rpx;
+		font-weight: 600;
+	}
+
+	.posterImage {
+		display: block;
+		width: 100%;
+		height: 760rpx;
+		border-radius: 14rpx;
+		background: #f6f6f6;
+	}
+
+	.posterActions {
+		display: flex;
+		gap: 18rpx;
+		margin-top: 24rpx;
+
+		button {
+			flex: 1;
+			height: 76rpx;
+			margin: 0;
+			border-radius: 38rpx;
+			font-size: 27rpx;
+			line-height: 76rpx;
+
+			&::after {
+				border: 0;
+			}
+		}
+
+		.previewButton {
+			color: $brand-theme-color;
+			background: rgba(40, 179, 137, 0.1);
+		}
+
+		.saveButton {
+			color: #fff;
+			background: $brand-theme-color;
 		}
 	}
 }
