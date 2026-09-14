@@ -79,11 +79,11 @@
 				</button>
 				<button
 					class="claimButton"
-					:class="{ disabled: isOutOfStock }"
+					:class="{ disabled: isOutOfStock, claimed: claimedState }"
 					:disabled="isOutOfStock"
 					@click="clickClaim"
 				>
-					{{ isOutOfStock ? '已领完' : '立即领取' }}
+					{{ claimButtonText }}
 				</button>
 			</view>
 		</view>
@@ -100,6 +100,7 @@ import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { apidetailWall } from '@/api/apis.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { isFavorite, toggleFavorite } from '@/utils/favorite.js'
+import { addClaimRecord, isClaimed } from '@/utils/claim.js'
 
 const storageClassList = uni.getStorageSync('storageClassList') || []
 const classList = ref(storageClassList.map(normalizeCover))
@@ -108,8 +109,13 @@ const currentId = ref(null)
 const currentInfo = ref(null)
 const readImgs = ref([])
 const favoriteState = ref(false)
+const claimedState = ref(false)
 
 const isOutOfStock = computed(() => Number(currentInfo.value?.stock || 0) <= 0)
+const claimButtonText = computed(() => {
+	if (isOutOfStock.value) return '已领完'
+	return claimedState.value ? '已领取' : '立即领取'
+})
 
 function normalizeCover(item = {}) {
 	return {
@@ -138,6 +144,7 @@ function setCurrentCover(index) {
 	currentInfo.value = cover
 	currentId.value = getCoverId(cover)
 	favoriteState.value = isFavorite(currentId.value)
+	claimedState.value = isClaimed(currentId.value)
 	preloadAround(index)
 }
 
@@ -215,17 +222,31 @@ function clickFavorite() {
 
 function clickClaim() {
 	if (isOutOfStock.value) {
-		uni.showToast({ title: '该封面已领完', icon: 'none' })
+		uni.showToast({ title: '该封面暂无库存', icon: 'none' })
+		return
+	}
+	if (isClaimed(currentId.value)) {
+		claimedState.value = true
+		uni.showToast({ title: '该封面已领取', icon: 'none' })
 		return
 	}
 
 	uni.showModal({
 		title: '确认领取',
-		content: '本阶段仅展示领取流程，不会生成领取记录。',
-		confirmText: '我知道了',
+		content: `确认领取“${currentInfo.value?.title || '当前'}”红包封面吗？`,
+		confirmText: '确认领取',
 		success: result => {
-			if (result.confirm) {
-				uni.showToast({ title: '领取功能将在后续阶段实现', icon: 'none' })
+			if (!result.confirm) return
+
+			try {
+				const record = addClaimRecord(currentId.value)
+				if (!record) throw new Error('领取记录无效')
+
+				claimedState.value = true
+				uni.showToast({ title: '领取成功', icon: 'success' })
+			} catch (error) {
+				claimedState.value = isClaimed(currentId.value)
+				uni.showToast({ title: '领取失败，请重试', icon: 'none' })
 			}
 		}
 	})
@@ -499,6 +520,10 @@ onShareTimeline(() => ({
 	.claimButton {
 		color: #fff;
 		background: linear-gradient(135deg, #f27a82, #df4d5b);
+		&.claimed {
+			color: #df4d5b;
+			background: #fff0f2;
+		}
 		&.disabled {
 			color: #fff;
 			background: #c8c9cc;
