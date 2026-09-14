@@ -19,7 +19,7 @@
           <view class="left">
             <uni-icons type="download-filled" size="20"></uni-icons>
             <view class="text">
-              我的下载
+              我的领取
             </view>
           </view>
           <view class="right">
@@ -34,7 +34,7 @@
           <view class="left">
             <uni-icons type="star-filled" size="20" ></uni-icons>
             <view class="text">
-              我的评分
+              我的收藏
             </view>
           </view>
           <view class="right">
@@ -116,7 +116,6 @@ const userInfo = ref(null)
 const getUserInfo = async ()=>{
   let res = await apiUserInfo()
   userInfo.value = res.data
-  console.log(userInfo.value);
 }
 getUserInfo()
 </script>

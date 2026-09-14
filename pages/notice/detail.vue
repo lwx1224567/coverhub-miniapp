@@ -4,11 +4,11 @@
 			<view class="tag">
 				<uni-tag inverted text="置顶" type="error" />
 			</view>
-			<view class="font">公共内容</view>			
+			<view class="font">CoverHub 使用提示</view>
 		</view>
 		
 		<view class="info">
-			<view class="item">阿东</view>					
+			<view class="item">CoverHub</view>
 			<view class="item">
 				<uni-dateformat :date="Date.now()" format="yyyy-MM-dd hh:mm:ss"></uni-dateformat>
 			</view>	
@@ -16,11 +16,11 @@
 		
 		
 		<view class="content">		
-			内容区域					
+			精选微信红包封面，领取与使用方式请以封面详情提示为准。
 		</view>
 		
 		<view class="count">
-			阅读 5588	
+			微信红包封面精选
 		</view>
 	</view>
 </template>

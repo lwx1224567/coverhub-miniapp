@@ -29,7 +29,7 @@
   defineProps({
     title:{
       type:String,
-      default:"壁纸"
+      default:"CoverHub"
     }
   })
 </script>

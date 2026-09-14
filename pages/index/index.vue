@@ -1,6 +1,6 @@
 <template>
   <view class="homeLayout pageBg">
-    <custom-nav-bar title="推荐"></custom-nav-bar>
+    <custom-nav-bar title="CoverHub"></custom-nav-bar>
     <view class="banner">
       <swiper :indicator-dots="true" :autoplay="true" indicator-color="rgba(255,255,255,0.5)"
         indicator-active-color="#fff" circular="true">
@@ -19,7 +19,7 @@
       <view class="center">
         <swiper :autoplay="true" :interval="1500" :duration="300" vertical="true">
           <swiper-item v-for="item in noticeList" :key="item._id">
-            <navigator url="/pages/notice/detail">{{item.title}}</navigator>
+            <navigator url="/pages/notice/detail">CoverHub 消息</navigator>
 
           </swiper-item>
         </swiper>
@@ -32,7 +32,7 @@
     <view class="select">
       <common-title>
         <template #name>
-          每日推荐
+          今日推荐
         </template>
         <template #custom>
           <view class="date">
@@ -55,7 +55,7 @@
     <view class="theme">
       <common-title>
         <template #name>
-          专题精选
+          热门主题
         </template>
         <template #custom>
           <navigator url="" class="more">More+</navigator>
@@ -94,7 +94,7 @@
     bannerList.value = res.data
   }
 
-  //获取每日推荐
+  //获取今日推荐
   const getRandom = async () => {
     let res = await apiGetRandom()
     randomList.value = res.data
@@ -129,14 +129,14 @@
   //分享给好友
   onShareAppMessage((e)=>{
     return {
-      title:'咸虾米壁纸',
+      title:'CoverHub 红包封面精选',
       path:'/pages/index/index'
     }
   })
   //分享给朋友圈
   onShareTimeline(()=>{
     return {
-      title:'咸虾米壁纸',
+      title:'CoverHub 红包封面精选',
       
     }
   })

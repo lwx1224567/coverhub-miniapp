@@ -30,7 +30,7 @@
   const noData = ref(false)
   const queryParams = {
     pageNum:1,
-    pageSize:12
+    pageSize:2
   }
   let pageName;
   onLoad((e)=>{
@@ -41,7 +41,7 @@
     queryParams.classid = id
     pageName = name
     uni.setNavigationBarTitle({
-      title:name
+      title:name ? name + '封面' : '封面列表'
     })
     getClassList()
   })
@@ -62,14 +62,14 @@
   //分享给好友
   onShareAppMessage((e)=>{
     return {
-      title:'咸虾米壁纸-' + pageName,
+      title:'CoverHub-' + pageName + '封面',
       path:'/pages/classList/classList?id=' + queryParams.classid + "&name=" + pageName
     }
   })
   //分享给朋友圈
   onShareTimeline(()=>{
     return {
-      title:'咸虾米壁纸-' + pageName,
+      title:'CoverHub-' + pageName + '封面',
       query:'id=' + queryParams.classid + "&name=" + pageName
     }
   })

@@ -16,12 +16,12 @@ export const getNavBarHeight = ()=> getStatusBarHeight() + getTitleBarHeight();
 
 //适配抖音小程序
 export const getLeftIconLeft = ()=>{
-  //#// #ifdef MP-MP-TOUTIAO
+  // #ifdef MP-TOUTIAO
   let {leftIcon:{left,width}} = tt.getCustomButtonBoundingClientRect();
   return left + parseInt(width)
   // #endif
-  
-  // #ifndef MP-MP-TOUTIAO
+
+  // #ifndef MP-TOUTIAO
   return 0
   // #endif
 }

@@ -36,7 +36,7 @@
         <view class="box" @click="clickDownload">
           <uni-icons type="download" size="23"></uni-icons>
           <view class="text">
-            下载
+            领取
           </view>
         </view>
       </view>
@@ -46,7 +46,7 @@
         <view class="popHeader">
           <view></view>
           <view class="title">
-            壁纸信息
+            封面信息
           </view>
           <view class="close" @click="clickInfoClose">
             <uni-icons type="closeempty" size="18" color="#999"></uni-icons>
@@ -56,7 +56,7 @@
           <view class="content">
             <view class="row">
               <text class="label">
-                壁纸ID：
+                封面ID：
               </text>
               <view selectable class="value">{{currentInfo._id}}</view>
             </view>
@@ -65,7 +65,7 @@
               <text class="label">
                 分类：
               </text>
-              <view selectable class="value class">明星美女</view>
+              <view selectable class="value class">{{currentInfo.className}}</view>
             </view>
 
             <view class="row">
@@ -117,7 +117,7 @@
         <view class="popHeader">
           <view></view>
           <view class="title">
-            {{isScore? '评分过了~':'壁纸评分'}}
+            {{isScore? '评分过了~':'封面评分'}}
           </view>
           <view class="close" @click="clickScoreClose">
             <uni-icons type="closeempty" size="18" color="#999"></uni-icons>
@@ -163,7 +163,7 @@
   const storageClassList = uni.getStorageSync('storageClassList') || []
   //保存看过的图片
   const readImgs = ref([])
-  //保存当前壁纸信息
+  //保存当前封面信息
   const currentInfo = ref(null)
   //是否有评分
   const isScore = ref(false)
@@ -199,7 +199,6 @@
       item._id === currentId.value
     )
     currentInfo.value = classList.value[currentIndex.value]
-    console.log(classList.value);
     readImgs.value.push(currentIndex.value,
       currentIndex.value < 0 ? classList.value.length - 1 : currentIndex.value - 1,
       currentIndex.value === classList.value.length - 1 ? 0 : currentIndex.value + 1,
@@ -285,7 +284,7 @@
   const clickDownload = async () => {
     // #ifdef H5
     uni.showModal({
-      content: '长按保存壁纸',
+      content: '长按保存红包封面',
       showCancel: false
     })
     // #endif
@@ -293,7 +292,7 @@
     // #ifndef H5
     try {
       uni.showLoading({
-        title: '下载中....',
+        title: '领取中....',
         mask: true
       })
       let {
@@ -301,22 +300,19 @@
         _id: wallId
       } = currentInfo.value
       let res = await apiWriteDownload({
-        classid: currentInfo,
+        classid,
         wallId,
       })
-      if (err.errCode !== 0) throw res
+      if (res.errCode !== 0) throw res
       uni.getImageInfo({
         src: currentInfo.value.picurl,
         success: (res) => {
           uni.saveImageToPhotosAlbum({
             filePath: res.path,
-            success: () => {
-              console.log(res);
-            },
             fail: err => {
               if (err.errMsg == 'saveImageToPhotosAlbum:fail cancel') {
                 uni.showToast({
-                  title: '保存失败，请重新点击下载',
+                  title: '保存失败，请重新点击领取',
                   icon: 'none'
                 })
                 return
@@ -353,7 +349,6 @@
         }
       })
     } catch (err) {
-      console.log(err);
       uni.hideLoading()
     }
     // #endif
@@ -365,14 +360,14 @@
   //分享给好友
   onShareAppMessage((e)=>{
     return {
-      title:'咸虾米壁纸-',
+      title:'CoverHub 红包封面',
       path:'/pages/preview/preview?id=' + currentId.value + "&type=share"
     }
   })
   //分享给朋友圈
   onShareTimeline(()=>{
     return {
-      title:'咸虾米壁纸-',
+      title:'CoverHub 红包封面',
       query:'id=' + currentId.value + "&type=share"
     }
   })

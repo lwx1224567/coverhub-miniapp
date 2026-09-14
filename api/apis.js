@@ -1,62 +1,67 @@
 import {
-  request
-} from '@/utils/request.js'
+  bannerList,
+  categoryList,
+  coverList,
+  noticeList,
+  recommendedCoverIds,
+  userInfo
+} from '@/mock/data.js'
+
+const clone = (data) => JSON.parse(JSON.stringify(data))
+
+const success = (data = null) => Promise.resolve({
+  errCode: 0,
+  errMsg: '操作成功',
+  data: clone(data)
+})
+
+const failure = (message) => Promise.reject({
+  errCode: 400,
+  errMsg: message,
+  data: null
+})
 
 export function apiGetBanner() {
-  return request({
-    url: '/homeBanner'
-  })
+  return success(bannerList)
 }
 export function apiGetRandom() {
-  return request({
-    url: '/randomWall'
-  })
+  const recommendations = recommendedCoverIds
+    .map(id => coverList.find(item => item._id === id))
+    .filter(Boolean)
+  return success(recommendations)
 }
 export function apiGetNotice(data = {}) {
-  return request({
-    url: '/wallNewsList',
-    data
-  })
+  return success(data.select ? noticeList.slice(0, 1) : noticeList)
 }
 
 export function apiGetClassify(data = {}){
-  return request({
-    url: '/classify',
-    data
-  }) 
+  const pageSize = data.select ? 6 : Number(data.pageSize) || categoryList.length
+  return success(categoryList.slice(0, pageSize))
 }
 
 export function apiGetClassList(data = {}){
-  return request({
-    url: '/wallList',
-    data
-  }) 
+  const pageNum = Math.max(1, Number(data.pageNum) || 1)
+  const pageSize = Math.max(1, Number(data.pageSize) || 12)
+  const start = (pageNum - 1) * pageSize
+  const list = coverList.filter(item => item.classid === data.classid)
+  return success(list.slice(start, start + pageSize))
 }
 
 export function apiGetSetUpScore(data = {}){
-  return request({
-    url: '/setupScore',
-    data
-  }) 
+  const target = coverList.find(item => item._id === data.wallId && item.classid === data.classid)
+  return target ? success({ wallId: data.wallId, userScore: data.userScore }) : failure('封面不存在')
 }
 
 export function apiWriteDownload(data = {}){
-  return request({
-    url: '/downloadWall',
-    data
-  }) 
+  const target = coverList.find(item => item._id === data.wallId && item.classid === data.classid)
+  return target ? success({ wallId: data.wallId }) : failure('封面不存在')
 }
 
 export function apidetailWall(data = {}){
-  return request({
-    url: '/detailWall',
-    data
-  }) 
+  const target = coverList.find(item => item._id === data.id)
+  return target ? success([target]) : failure('封面不存在')
 }
 
 export function apiUserInfo(data = {}){
-  return request({
-    url: '/userInfo',
-    data
-  }) 
+  return success(userInfo)
 }

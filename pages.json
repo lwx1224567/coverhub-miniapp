@@ -3,7 +3,7 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "首页",
+				"navigationBarTitleText": "CoverHub",
         "navigationStyle": "custom"
 			}
 		},
@@ -11,7 +11,7 @@
 		  "path" : "pages/classify/classify",
 		  "style" : 
 		  {
-		    "navigationBarTitleText" : "分类",
+		    "navigationBarTitleText" : "封面分类",
 		    "enablePullDownRefresh" : false,
         "navigationStyle": "custom"
 		  }
@@ -29,7 +29,7 @@
 		  "path" : "pages/classList/classList",
 		  "style" : 
 		  {
-		    "navigationBarTitleText" : "分类列表",
+		    "navigationBarTitleText" : "封面列表",
 		    "enablePullDownRefresh" : false
 		  }
 		},
@@ -37,7 +37,7 @@
 		  "path" : "pages/preview/preview",
 		  "style" : 
 		  {
-		    "navigationBarTitleText" : "预览",
+		    "navigationBarTitleText" : "封面详情",
 		    "enablePullDownRefresh" : false,
         "navigationStyle": "custom"
 		  }
@@ -61,7 +61,7 @@
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "壁纸",
+		"navigationBarTitleText": "CoverHub",
 		"navigationBarBackgroundColor": "#fff",
 		"backgroundColor": "#F8F8F8"
 	},
@@ -70,7 +70,7 @@
     "selectedColor": "#28B389",
     "list": [
       {
-        "text": "推荐",
+        "text": "精选",
         "pagePath": "pages/index/index",
         "iconPath": "static/tabBar/home.png",
         "selectedIconPath": "static/tabBar/home-h.png"

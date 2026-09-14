@@ -1,6 +1,6 @@
 <template>
   <view class="classLayout pageBg">
-    <custom-nav-bar title="分类"></custom-nav-bar>
+    <custom-nav-bar title="封面分类"></custom-nav-bar>
     <view class="classify">
       <theme-item v-for="item in classifyList" :key="item._id" :item="item"></theme-item>
     </view>
@@ -25,14 +25,14 @@
   //分享给好友
   onShareAppMessage((e)=>{
     return {
-      title:'咸虾米壁纸',
+      title:'CoverHub 封面分类',
       path:'/pages/index/index'
     }
   })
   //分享给朋友圈
   onShareTimeline(()=>{
     return {
-      title:'咸虾米壁纸',
+      title:'CoverHub 封面分类',
       
     }
   })
