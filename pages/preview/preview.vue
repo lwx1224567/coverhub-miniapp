@@ -80,8 +80,7 @@
 				<button
 					class="claimButton"
 					:class="{ disabled: isOutOfStock, claimed: claimedState }"
-					:disabled="isOutOfStock"
-					@click="clickClaim"
+					@tap="handleClaim"
 				>
 					{{ claimButtonText }}
 				</button>
@@ -220,7 +219,9 @@ function clickFavorite() {
 	}
 }
 
-function clickClaim() {
+function handleClaim() {
+	if (!currentInfo.value || !currentId.value) return
+
 	if (isOutOfStock.value) {
 		uni.showToast({ title: '该封面暂无库存', icon: 'none' })
 		return

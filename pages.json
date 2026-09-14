@@ -51,6 +51,22 @@
 		  }
 		},
 		{
+		  "path": "pages/favorite/favorite",
+		  "style" :
+		  {
+		    "navigationBarTitleText" : "我的收藏",
+		    "enablePullDownRefresh" : false
+		  }
+		},
+		{
+		  "path": "pages/claim/claim",
+		  "style" :
+		  {
+		    "navigationBarTitleText" : "我的领取",
+		    "enablePullDownRefresh" : false
+		  }
+		},
+		{
 		  "path" : "pages/notice/notice",
 		  "style" : 
 		  {

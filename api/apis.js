@@ -60,6 +60,16 @@ export function apiSearchCovers(keyword = ''){
   return success(results)
 }
 
+export function apiGetCoversByIds(ids = []){
+  if(!Array.isArray(ids)) return success([])
+
+  const normalizedIds = [...new Set(ids.map(id => String(id).trim()).filter(Boolean))]
+  const results = normalizedIds
+    .map(id => coverList.find(item => String(item._id || item.id) === id))
+    .filter(Boolean)
+  return success(results)
+}
+
 export function apiGetSetUpScore(data = {}){
   const target = coverList.find(item => item._id === data.wallId && item.classid === data.classid)
   return target ? success({ wallId: data.wallId, userScore: data.userScore }) : failure('封面不存在')

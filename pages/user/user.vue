@@ -1,209 +1,174 @@
 <template>
-  <view class="userLayout pageBg" v-if="userInfo">
-    <view :style="{height:getNavBarHeight() + 'px'}"></view>
+  <view class="userLayout pageBg">
+    <view :style="{ height: getNavBarHeight() + 'px' }"></view>
+
     <view class="userInfo">
       <view class="avatar">
-        <image src="../../static/avatar.jpg" mode="aspectFill"></image>
+        <uni-icons type="gift-filled" size="52" color="#ffffff"></uni-icons>
       </view>
-      <view class="ip">
-        {{userInfo.IP}}
-      </view>
-      <view class="address">
-        来自于：{{userInfo.address.province}}
-      </view>
+      <view class="brandName">CoverHub</view>
+      <view class="brandIntro">微信红包封面精选</view>
     </view>
-    
+
     <view class="section">
       <view class="list">
-        <navigator class="row" url="/pages/classList/classList">
+        <navigator class="row" url="/pages/favorite/favorite">
           <view class="left">
-            <uni-icons type="download-filled" size="20"></uni-icons>
-            <view class="text">
-              我的领取
-            </view>
+            <uni-icons type="star-filled" size="20"></uni-icons>
+            <view class="text">我的收藏</view>
           </view>
           <view class="right">
-            <view class="text">
-              {{userInfo.downloadSize}}
-            </view>
+            <view class="count">{{ favoriteCount }}</view>
             <uni-icons type="right" size="15"></uni-icons>
           </view>
         </navigator>
-        
-        <navigator class="row" url="/pages/classList/classList">
+
+        <navigator class="row" url="/pages/claim/claim">
           <view class="left">
-            <uni-icons type="star-filled" size="20" ></uni-icons>
-            <view class="text">
-              我的收藏
-            </view>
+            <uni-icons type="gift-filled" size="20"></uni-icons>
+            <view class="text">我的领取</view>
           </view>
           <view class="right">
-            <view class="text">
-             {{userInfo.scoreSize}}
-            </view>
-            <uni-icons type="right" size="15" color="#aaa"></uni-icons>
+            <view class="count">{{ claimCount }}</view>
+            <uni-icons type="right" size="15"></uni-icons>
           </view>
         </navigator>
-        
-        <view class="row">
+
+        <view class="row contactRow">
           <view class="left">
-            <uni-icons type="chatboxes-filled" size="20" ></uni-icons>
-            <view class="text">
-              联系客服
-            </view>
+            <uni-icons type="chatboxes-filled" size="20"></uni-icons>
+            <view class="text">联系客服</view>
           </view>
           <view class="right">
-            <view class="text">
-              
-            </view>
-            
+            <uni-icons type="right" size="15"></uni-icons>
           </view>
-          <!-- #ifdef MP -->
+          <!-- #ifdef MP-WEIXIN -->
           <button open-type="contact">联系客服</button>
           <!-- #endif -->
-          <!-- #ifndef MP -->
-          <button @click="clickContact">拨打电话</button>
-          <!-- #endif -->
-          
         </view>
       </view>
     </view>
-    
-    <view class="section">
-      <view class="list">
-        <view class="row" >
-          <view class="left">
-            <uni-icons type="notification-filled" size="20" color="#28b389"></uni-icons>
-            <view class="text">
-              订阅更新
-            </view>
-          </view>
-          <view class="right">
-            <view class="text">
-              
-            </view>
-          </view>
-        </view>
-        
-        <view class="row" >
-          <view class="left">
-            <uni-icons type="flag-filled" size="20"></uni-icons>
-            <view class="text">
-              常见问题
-            </view>
-          </view>
-          <view class="right">
-            <view class="text">
-              
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
+
+    <view class="safe-area-inset-bottom"></view>
   </view>
 </template>
 
 <script setup>
-  import {getNavBarHeight} from '@/utils/system.js'
-  import {apiUserInfo} from '@/api/apis.js'
-  import{ref} from 'vue'
-const clickContact = ()=>{
-  uni.makePhoneCall({
-    phoneNumber:"19720921918"
-  })
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { getNavBarHeight } from '@/utils/system.js'
+import { getFavoriteIds } from '@/utils/favorite.js'
+import { getClaimRecords } from '@/utils/claim.js'
+
+const favoriteCount = ref(0)
+const claimCount = ref(0)
+
+function refreshCounts() {
+  favoriteCount.value = getFavoriteIds().length
+  claimCount.value = getClaimRecords().length
 }
-const userInfo = ref(null)
-const getUserInfo = async ()=>{
-  let res = await apiUserInfo()
-  userInfo.value = res.data
-}
-getUserInfo()
+
+onShow(refreshCounts)
 </script>
 
 <style lang="scss" scoped>
-  .userLayout {
-    .userInfo {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      padding: 50rpx 0;
+.userLayout {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
 
-      .avatar {
-        width: 160rpx;
-        height: 160rpx;
-        border-radius: 50%;
-        overflow: hidden;
-        image {
-          width: 100%;
-          height: 100%;
-        }
+  .userInfo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 54rpx 0 34rpx;
+
+    .avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 150rpx;
+      height: 150rpx;
+      border: 6rpx solid rgba(255, 255, 255, 0.85);
+      border-radius: 50%;
+      background: linear-gradient(135deg, #45c89c, #28b389);
+      box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.08);
+    }
+
+    .brandName {
+      padding: 22rpx 0 6rpx;
+      color: $text-font-color-1;
+      font-size: 42rpx;
+      font-weight: 700;
+    }
+
+    .brandIntro {
+      color: $text-font-color-3;
+      font-size: 27rpx;
+    }
+  }
+
+  .section {
+    width: 690rpx;
+    margin: 34rpx auto;
+    overflow: hidden;
+    border: 1px solid #eee;
+    border-radius: 16rpx;
+    background: #fff;
+    box-shadow: 0 8rpx 30rpx rgba(0, 0, 0, 0.05);
+  }
+
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 108rpx;
+    padding: 0 30rpx;
+    border-bottom: 1px solid #eee;
+    background: #fff;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    .left,
+    .right {
+      display: flex;
+      align-items: center;
+    }
+
+    .left {
+      :deep(.uni-icons) {
+        color: $brand-theme-color !important;
       }
-      .ip{
-        font-size: 44rpx;
-        color: #333;
-        padding: 20rpx 0 5rpx;
-      }
-      .address{
-        font-size: 28rpx;
-        color: #aaa;
+
+      .text {
+        padding-left: 20rpx;
+        color: $text-font-color-2;
+        font-size: 29rpx;
       }
     }
-    .section{
-      width: 690rpx;
-      margin: 50rpx auto;
-      border: 1px solid #eee;
-      border-radius: 10rpx;
-      box-shadow: 0 0 30rpx rgba(0, 0, 0, 0.05);
-      .list{
-        .row{
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0 30rpx;
-          height: 100rpx;
-          border-bottom: 1px solid #eee;
-          position: relative;
-          background-color: #fff;
-          &:last-child{
-            border-bottom: 0;
-          }
-          .left{
-            display: flex;
-            align-items: center;
-            :deep(){
-              .uni-icons{
-                color:$brand-theme-color !important;
-              }
-            }
-            .text{
-              padding-left: 20rpx;
-              color: #666;
-            }
-          }
-          .right{
-            display: flex;
-            align-items: center;
-            :deep(){
-              .uni-icons{
-                color:$brand-theme-color !important;
-              }
-            }
-            .text{
-              padding-left: 28rpx;
-              color: #aaa;
-            }
-          }
-          button{
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: 100%;
-            opacity: 0;
-          }
-        }
+
+    .right {
+      gap: 16rpx;
+
+      .count {
+        min-width: 48rpx;
+        color: $text-font-color-3;
+        font-size: 27rpx;
+        text-align: right;
       }
     }
   }
+
+  .contactRow button {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+}
 </style>
